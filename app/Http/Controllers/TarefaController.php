@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\TarefasExport;
 use App\Mail\NovaTarefaMail;
+use Maatwebsite\Excel\Excel;
 use Mail;
 use App\Models\Tarefa;
 use Illuminate\Http\Request;
@@ -10,9 +12,12 @@ use Illuminate\Support\Facades\Auth;
 
 class TarefaController extends Controller
 {
-    public function __construct()
+    private Excel $excel;
+
+    public function __construct(Excel $excel)
     {
        $this->middleware('auth');
+       $this->excel = $excel;
     }
 
     /**
@@ -98,7 +103,13 @@ class TarefaController extends Controller
      */
     public function edit(Tarefa $tarefa)
     {
-        //
+        $user_id = auth()->user()->id;
+
+        if ($tarefa->user_id == $user_id) {
+            return view('tarefa.edit', ['tarefa' => $tarefa]);
+        }
+
+        return view('acesso-negado');
     }
 
     /**
@@ -110,7 +121,14 @@ class TarefaController extends Controller
      */
     public function update(Request $request, Tarefa $tarefa)
     {
-        //
+        $user_id = auth()->user()->id;
+
+        if ($tarefa->user_id = $user_id) {
+            $tarefa->update($request->all());
+            return redirect()->route('tarefa.show', ['tarefa' => $tarefa->id]);
+        }
+
+        return view('acesso-negado');
     }
 
     /**
@@ -121,6 +139,21 @@ class TarefaController extends Controller
      */
     public function destroy(Tarefa $tarefa)
     {
-        //
+        if ($tarefa->user_id = auth()->user()->id){
+            $tarefa->delete();
+            return redirect()->route('tarefa.index');
+        }
+
+        return view('acesso-nego');
+    }
+
+    public function export($extensao)
+    {
+        if ($extensao == 'xlsx' || 'csv')
+        {
+            return $this->excel->download(new TarefasExport, 'lista_de_tarefas.'.$extensao);
+        }
+
+        return redirect()->route('tarefa.index');
     }
 }
